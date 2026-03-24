@@ -386,7 +386,6 @@ GEN_HEADER_FILE_FOR_FACTORS_POPULATE(
     "${COST_MODEL_BINARY_DIR}/include/vpu/shave/generated_shave_factors_population_npu5.h"
 )
 
-
 # Generate header file for heuristic factors
 GEN_HEADER_FILE_FOR_FACTORS_POPULATE(
     "${CMAKE_CURRENT_SOURCE_DIR}/shave_heuristic_factors_npu5.csv"
