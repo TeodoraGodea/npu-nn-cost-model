@@ -1,0 +1,440 @@
+// Copyright © 2026 Intel Corporation
+// SPDX-License-Identifier: Apache 2.0
+// LEGAL NOTICE: Your use of this software and any required dependent software (the “Software Package”)
+// is subject to the terms and conditions of the software license agreements for the Software Package,
+// which may also include notices, disclaimers, or license terms for third party or open source software
+// included in or with the Software Package, and your use indicates your acceptance of all such terms.
+// Please refer to the “third-party-programs.txt” or other similarly-named text file included with the
+// Software Package for additional details.
+
+#ifndef VPUNN_TYPES_17_H
+#define VPUNN_TYPES_17_H
+
+#include <algorithm>
+#include <array>
+#include <cstdlib>
+#include <limits>
+#include <numeric>
+#include <vector>
+#include "inference/nn_descriptor_capabilities.h"
+#include "inference/nn_descriptor_versions.h"
+#include "inference/preprocessing_inserter.h"
+#include "vpu/types.h"  // need to know the present day types for conversion
+#include "vpu/utils.h"
+
+#include "preprocessing_adapters_17.h"
+
+#include <map>
+#include <set>
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include "inference/preprocessing_inserter_basics.h"
+#include "vpu/validation/dpu_operations_validator.h"
+
+#include "types12.h"  //based on 12
+
+namespace VPUNN {
+/** @brief Type interface for interface version 17. This is a convention on what to contain the VPUNN's input
+ * descriptor in this namespace all the types will be stored exactly like they are required by this interface
+ * vs intf16: FLOAT4 and INT32 added in DataType, new dCIM execution mode 64x128, removed REDUCE_SUMSQUARES operation
+ */
+
+namespace intf_17 {
+// when making a new interface version, start copying from here
+
+/// gives the EnumMap for a E enum type
+/// has to be fully implemented for each type we want to cover
+template <typename E>
+inline const EnumMap& mapToText();
+
+template <typename E>
+inline const EnumTextLogicalMap& mapToLogicalText();
+
+/// creates the  EnumInverseMap for a particular E enum type
+/// @pre the EnumMap<E> must exists
+template <typename E>
+inline const EnumInverseMap& mapFromText() {
+    static auto m = createInverseMap(mapToText<E>());
+    return m;
+}
+
+/**
+ * @brief Supported Datatypes in the Descriptor as One hot representation
+ *
+ */
+enum class DataType {
+    UINT8,    ///< all (u)int 8 expected to be in the same runtime performance
+    FLOAT16,  ///< all F16 expected to be in the same runtime performance
+    HF8,      ///< all 8 bit Float expected to be around I8, except Elmwise :around FP16
+    FLOAT32,  ///< 32bit float
+    UINT4,    ///< sub 8 bit types are used for palletization
+    UINT16,   ///< signed/unsigned 16 bit int expected to be same runtime performance
+    FLOAT4,   ///< new in this version
+    INT32,    ///< new in this version, signed 32 bit int
+    __size
+};
+
+static const EnumMap DataType_ToText{
+        link(DataType::UINT8, "UINT8"),      //
+        link(DataType::FLOAT16, "FLOAT16"),  //
+        link(DataType::HF8, "HF8"),          //
+        link(DataType::FLOAT32, "FLOAT32"),  //
+        link(DataType::UINT4, "UINT4"),      //
+        link(DataType::UINT16, "UINT16"),    //
+        link(DataType::FLOAT4, "FLOAT4"),    //
+        link(DataType::INT32, "INT32"),      //
+};
+
+template <>
+inline const EnumMap& mapToText<DataType>() {
+    return DataType_ToText;
+}
+
+static const EnumTextLogicalMap dtype_logical_map{
+        link_logical("UINT8", "UINT8"),       // same
+        link_logical("INT8", "UINT8"),        // mapped
+        link_logical("FLOAT16", "FLOAT16"),   // same
+        link_logical("BFLOAT16", "FLOAT16"),  // same
+        link_logical("HF8", "HF8"),           // same
+        link_logical("BF8", "HF8"),           // same
+        link_logical("UINT4", "UINT4"),       // same, to be profiled as UINT4 palletized, only for wts
+        link_logical("INT4", "UINT4"),        // mapped, to be profiled as UINT4 palletized, only for wts
+        link_logical("UINT2", "UINT4"),       // mapped
+        link_logical("INT2", "UINT4"),        // mapped
+        link_logical("UINT1", "UINT8"),       // not supported
+        link_logical("INT1", "UINT8"),        // not supported
+        link_logical("FLOAT32", "FLOAT32"),   // same
+        link_logical("INT32", "INT32"),       // same, new in this version
+        link_logical("UINT16", "UINT16"),     // mapped
+        link_logical("INT16", "UINT16"),      // mapped
+        link_logical("FLOAT4", "FLOAT4"),     // mapped new
+};
+
+template <>
+inline const EnumTextLogicalMap& mapToLogicalText<DataType>() {
+    return dtype_logical_map;
+}
+
+/**
+ * @brief HW operations
+ *
+ */
+enum class Operation {
+    CONVOLUTION,     //
+    DW_CONVOLUTION,  //
+    ELTWISE,         // ADD + SUB
+    MAXPOOL,         //
+                     // AVEPOOL,         // mapped to DW_CONVOLUTION
+    CM_CONVOLUTION,  //
+    // LAYER_NORM,      // new LayerNorm (never used properly)!
+    // ELTWISE_MUL,     // MUL  is the same as ADD/SUB in HW
+    REDUCE_MS,  // Reduce mean , reduce sum
+    // REDUCE_SUMSQUARES,  // Reduce Sum of Squares (weightless) // defeatured on future versions, see 199750
+    // Other new ops?
+    __size
+};
+static const EnumMap Operation_ToText{
+        link(Operation::CONVOLUTION, "CONVOLUTION"), link(Operation::DW_CONVOLUTION, "DW_CONVOLUTION"),
+        link(Operation::ELTWISE, "ELTWISE"), link(Operation::MAXPOOL, "MAXPOOL"),
+        link(Operation::CM_CONVOLUTION, "CM_CONVOLUTION"),
+        // link(Operation::LAYER_NORM, "LAYER_NORM"),
+        link(Operation::REDUCE_MS, "REDUCE_MS"),
+        // link(Operation::REDUCE_SUMSQUARES, "REDUCE_SUMSQUARES"),
+};
+template <>
+inline const EnumMap& mapToText<Operation>() {
+    return Operation_ToText;
+}
+static const EnumTextLogicalMap op_logical_map{
+        link_logical("CONVOLUTION", "CONVOLUTION"),        //
+        link_logical("DW_CONVOLUTION", "DW_CONVOLUTION"),  //
+        link_logical("ELTWISE", "ELTWISE"),                //
+        link_logical("MAXPOOL", "MAXPOOL"),                //
+        link_logical("AVEPOOL", "DW_CONVOLUTION"),         //
+        link_logical("CM_CONVOLUTION", "CM_CONVOLUTION"),  //
+        // link_logical("LAYER_NORM", "CONVOLUTION"),               // throw error if encountered
+        link_logical("ELTWISE_MUL", "ELTWISE"),  // map to classic
+        link_logical("REDUCE_MS", "REDUCE_MS"),  //
+        // link_logical("REDUCE_SUMSQUARES", "REDUCE_SUMSQUARES"),  // throw error if encountered
+};
+template <>
+inline const EnumTextLogicalMap& mapToLogicalText<Operation>() {
+    return op_logical_map;
+}
+
+/**
+ * @brief DPU execution modes , see SAS/HAS
+ */
+enum class ExecutionMode {
+    CUBOID_16x16,  // from 27, 40 :  NTHW/NTK = 16/4,   50 : NTHW/NTK = 16/2
+    CUBOID_8x16,   // from 27, 40 :  NTHW/NTK = 8/8     50 : NTHW/NTK = 8/4
+    CUBOID_4x16,   // from 27, 40 :  NTHW/NTK = 4/16    50 : NTHW/NTK = 4/8
+    dCIM_32x128,   // from 60 :      NTHW/NTK =
+    dCIM_64x128,   // from 70 : 	 NTHW/NTK =, new in this version
+    __size
+};
+
+static const EnumMap ExecutionMode_ToText{
+        link(ExecutionMode::CUBOID_16x16, "CUBOID_16x16"), link(ExecutionMode::CUBOID_8x16, "CUBOID_8x16"),
+        link(ExecutionMode::CUBOID_4x16, "CUBOID_4x16"), link(ExecutionMode::dCIM_32x128, "dCIM_32x128"),
+        link(ExecutionMode::dCIM_64x128, "dCIM_64x128")};
+template <>
+inline const EnumMap& mapToText<ExecutionMode>() {
+    return ExecutionMode_ToText;
+}
+static const EnumTextLogicalMap exec_logical_map{link_logical("CUBOID_16x16", "CUBOID_16x16"),  //
+                                                 link_logical("CUBOID_8x16", "CUBOID_8x16"),    //
+                                                 link_logical("CUBOID_4x16", "CUBOID_4x16"),    //
+                                                 link_logical("dCIM_32x128", "dCIM_32x128"),    //
+                                                 link_logical("dCIM_64x128", "dCIM_64x128")};   // mapped new
+template <>
+inline const EnumTextLogicalMap& mapToLogicalText<ExecutionMode>() {
+    return exec_logical_map;
+}
+
+/**
+ * @brief converts the present day interface value to the value corresponding to this interface version
+ * requires the existence of mapToText and mapFromText services for the subjected enums
+ * @throws out_of_range if the conversion is not possible
+ */
+template <typename CompatibleEnum, typename PresentEnum>
+CompatibleEnum convert(PresentEnum present_day_value_type) {
+    // search the text of the passed value, according to present day enum
+    std::string text_val{""};
+    try {
+        text_val = VPUNN::mapToText<PresentEnum>().at(static_cast<int>(present_day_value_type));  // new to txt
+    } catch (const std::exception& e) {
+        std::stringstream buffer;
+        buffer << "[ERROR]:could not map enum value: " << static_cast<int>(present_day_value_type)
+               << " to enum text!. Value unmapped in the following defined map:" << VPUNN::mapToText<PresentEnum>()
+               << " Original exception: " << e.what() << " File: " << __FILE__ << " Line: " << __LINE__;
+        std::string details = buffer.str();
+        throw std::out_of_range(details);
+    }
+
+    int old_id = -1;
+    try {
+        std::string logically_mapped_text{""};
+        try {
+            logically_mapped_text = mapToLogicalText<CompatibleEnum>().at(text_val);
+        } catch (const std::exception& e) {
+            std::stringstream buffer;
+            buffer << "[ERROR]:could not map enum value: " << text_val << " to a logical enum text!. "
+                   << " Initial exception: " << e.what() << " File: " << __FILE__ << " Line: " << __LINE__;
+            std::string details = buffer.str();
+            throw std::out_of_range(details);
+        }
+
+        old_id = mapFromText<CompatibleEnum>().at(logically_mapped_text);
+    } catch (const std::exception& e) {
+        std::stringstream buffer;
+        buffer << "[ERROR]:could not map enum from text: " << text_val
+               << " to an enum value in target required interface. This value might not be supported.\n Value unmapped "
+                  "in the defined map:"
+               << mapFromText<CompatibleEnum>() << " Initial exception: " << e.what() << " File: " << __FILE__
+               << " Line: " << __LINE__;
+        std::string details = buffer.str();
+        throw std::out_of_range(details);
+    }
+
+    return static_cast<CompatibleEnum>(old_id);
+}
+
+}  // namespace intf_17
+
+struct NPU_RESERVED_10Capabilities {
+    static inline const std::set<std::string> capabilities = {
+            "DW_MXP_AVP_SupportsMoreThan64Ch", "dcim", "uint16",  //
+            "fp4"                                                 // new in this version
+    };
+    static const std::set<std::string>& get() {
+        return capabilities;
+    }
+};
+
+// interface class
+
+/// Inserts different datatypes into a descriptor buffer
+template <class T, typename DeviceAdapter>
+class Inserter_Interface17 : Inserter<T> {
+public:
+    using Inserter<T>::insert;  ///< exposes the non virtual insert methods
+    Inserter_Interface17(std::vector<T>& output): Inserter<T>(output) {
+    }
+
+    /// @brief insert specialization for VPUTensor
+    template <bool only_simulate>
+    size_t insert(const VPUTensor& data, size_t offset) {
+        offset = this->insert<only_simulate>(data.get_shape()[0], offset);
+        offset = this->insert<only_simulate>(data.get_shape()[1], offset);
+        offset = this->insert<only_simulate>(data.get_shape()[2], offset);
+        offset = this->insert<only_simulate>(data.get_shape()[3], offset);
+
+        // datatype is particular here
+        offset = this->insert<only_simulate>(intf_17::convert<intf_17::DataType>(data.get_dtype()), offset);
+        return offset;
+    }
+};
+
+/**
+ * @brief New datatype compared to intf16: FP4,
+ * new dCIM execution mode compared to intf16: 64x128
+ * new removed REDUCE_SUMSQUARES from Operations
+ *
+ * DATA CHANGES:
+ *
+ */
+template <class T, typename DeviceAdapter, NNVersions V, typename CapabilitiesProvider>
+class Preprocessing_Interface17_Archetype :
+        public PreprocessingInserter<T,
+                                     Preprocessing_Interface17_Archetype<T, DeviceAdapter, V, CapabilitiesProvider>> {
+private:
+    inline static const DPU_OperationValidator workload_validator{};  ///< sanitizer mechanisms
+protected:
+    friend class PreprocessingInserter<T,
+                                       Preprocessing_Interface17_Archetype<T, DeviceAdapter, V, CapabilitiesProvider>>;
+
+    /**
+     * @brief Transform a DPUWorkload into a DPUWorkload descriptor
+     *
+     * @param workload a DPUWorkload
+     * @param debug_offset [out] is the offset where a new value can be written. interpreted as how many positions were
+     * written
+     * @tparam only_simulate, if true then no data is actually written, only the offset is computed
+     * @return std::vector<T>& a DPUWorkload descriptor
+     */
+    template <bool only_simulate>
+    void transformOnly(const DPUWorkload& workload, size_t& debug_offset,
+                       std::vector<T>& destination_descriptor) const {
+        Inserter_Interface17<T, DeviceAdapter> ins(destination_descriptor);
+
+        // Build the vector from the inputs
+        size_t offset = 0;
+
+        // for enums we must put here the equivalent version  from the target interface, not latest types
+
+        {
+            const auto operation{DeviceAdapter::mock_replace_operations(workload.op, workload)};
+            offset = ins.template insert<only_simulate>(intf_17::convert<intf_17::Operation>(operation), offset);
+
+            if (operation == Operation::REDUCE_MS) {
+                Logger::warning()
+                        << "The DPU NN loaded was not trained for REDUCE operations, but one was encountered! "
+                           "Unreliable predicted values for cost! \n";
+            }
+        }
+
+        offset =
+                ins.template insert<only_simulate>(workload.inputs[0], offset);  // not to adjust based on input_autopad
+
+        // input 1 _type has special source
+        offset = ins.template insert<only_simulate>(
+                intf_17::convert<intf_17::DataType>(workload.weight_type.value_or(workload.inputs[0].get_dtype())),
+                offset);
+
+        offset = ins.template insert<only_simulate>(workload.outputs[0],
+                                                    offset);  // not to adjust based on output_autopad
+        // also the training space should have data where channels are not padded (because they will be autopadded in
+        // DPU in HW)
+
+        offset = ins.template insert<only_simulate>(workload.kernels[0], offset);
+        offset = ins.template insert<only_simulate>(workload.kernels[1], offset);
+
+        offset = ins.template insert<only_simulate>(workload.strides[0], offset);
+        offset = ins.template insert<only_simulate>(workload.strides[1], offset);
+
+        offset = ins.template insert<only_simulate>(workload.padding[0], offset);
+        offset = ins.template insert<only_simulate>(workload.padding[1], offset);
+        offset = ins.template insert<only_simulate>(workload.padding[2], offset);
+        offset = ins.template insert<only_simulate>(workload.padding[3], offset);
+
+        // new execution modes
+        offset = ins.template insert<only_simulate>(intf_17::convert<intf_17::ExecutionMode>(workload.execution_order),
+                                                    offset);
+
+        {
+            offset = ins.template insert<only_simulate>(workload.act_sparsity, offset);
+            offset = ins.template insert<only_simulate>(workload.weight_sparsity, offset);
+        }
+
+        {
+            const auto modified_fields{DeviceAdapter::avoid_untrained_space(workload)};
+
+            const auto owt{modified_fields.owt};
+            offset = ins.template insert<only_simulate>(owt, offset);  // output write tiles
+        }
+
+        // no change in layouts
+        offset = ins.template insert<only_simulate>(intf_12::convert<intf_12::Layout>(workload.outputs[0].get_layout()),
+                                                    offset);  // odu_permute
+
+        // new fields for interface 13
+
+        offset = ins.template insert<only_simulate>(workload.is_inplace_output_memory(), offset);
+        offset = ins.template insert<only_simulate>(workload.is_weightless_operation(), offset);
+
+        offset = ins.template insert<only_simulate>(workload.is_superdense(), offset);
+
+        // shall we add also some halo info ? for example what is forgotten in self?
+
+        offset = ins.template insert<only_simulate>(workload.is_reduce_minmax_op(), offset);
+
+        // Fields present in DPUWorkload that are excluded from this descriptor
+        //  - halo : impacts memory and cost
+        //  - sep_activators : impacts memory primary
+        //  - input_autopad : impacts memory primary
+        //  - output_autopad : impacts memory primary
+        //  - mpe_engine : we use the execution_order from the execution mode field, so this is not needed
+
+        debug_offset = offset;
+    }
+
+    /// how big the descriptor is, fixed at type.
+    /// increased size by 6 fields overall: 3 FLOAT4 fields, 3 INT32 one-hot fields,
+    /// 1 execution mode field added, and 1 REDUCE_SUMSQUARES operation removed 
+    /// now has size 64
+    inline static constexpr size_t size_of_descriptor{
+            44 + 3 + 3 + 3  // old
+            + 1 * 3         // old
+            + 1             // old
+            + 0             // old
+            + 1             // old
+
+            // new intf 17
+            + 1 * 3  // new: datatype (float4), 3 times (input0, input1, output0);
+            + 1 * 3  // new: datatype (int32), 3 times (input0, input1, output0);
+            + 1      // new: execution mode field dcim 64x128
+            - 1      // removed REDUCE_SUMSQUARES from Operations
+    };  //
+
+public:
+    /// @brief the descriptor interface that this type was designed to fill/comply with
+    static int getInterfaceVersion() {
+        return static_cast<std::underlying_type_t<NNVersions>>(V);
+    }
+
+    /// @brief Ctor , inits the content with expected size
+    Preprocessing_Interface17_Archetype(const std::set<std::string>& nn_capabilities)
+            : PreprocessingInserter<T, Preprocessing_Interface17_Archetype<T, DeviceAdapter, V, CapabilitiesProvider>>(
+                      size_of_descriptor, nn_capabilities) {
+    }
+
+    /// @brief Ctor using template-provided capabilities
+    Preprocessing_Interface17_Archetype()
+            : PreprocessingInserter<T, Preprocessing_Interface17_Archetype<T, DeviceAdapter, V, CapabilitiesProvider>>(
+                      size_of_descriptor, CapabilitiesProvider::get()) {
+    }
+
+    /// @brief default virtual destructor
+    virtual ~Preprocessing_Interface17_Archetype() = default;
+};
+
+//---------------------------------------------------------
+template <class T>
+using Preprocessing_Interface17 =
+        Preprocessing_Interface17_Archetype<T, NN7XInputAdapter, NNVersions::VERSION_17_NPU_RESERVED_10, NPU_RESERVED_10Capabilities>;
+
+}  // namespace VPUNN
+
+#endif  // VPUNN_TYPES_17_H
