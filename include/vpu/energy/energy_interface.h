@@ -7,30 +7,30 @@
 // Please refer to the “third-party-programs.txt” or other similarly-named text file included with the
 // Software Package for additional details.
 
-#ifndef ENERGY_INTERFACE_H
-#define ENERGY_INTERFACE_H
+#ifndef VPUNN_ENERGY_INTERFACE_H
+#define VPUNN_ENERGY_INTERFACE_H
 
 #include <type_traits>
 #include <utility>
 
+#include "power.h"
 #include "vpu/dpu_info_pack.h"
-#include "vpu/power.h"
 #include "vpu/shave_old.h"
 #include "vpu/types.h"
 #include "vpu/vpu_performance_model.h"
 
 namespace VPUNN {
 
-class VPUCostModel;  // fw declaration, at least for now we depend on the big cost model  as a provider for almost
-                     // everything
-class SHAVECostModel; // fw declaration
+class VPUCostModel;    // fw declaration, at least for now we depend on the big cost model  as a provider for almost
+                       // everything
+class SHAVECostModel;  // fw declaration
 
 /// provides energy computation
 class IEnergy {
 private:
-    const VPUCostModel& all_service_provider;  ///< service as dpu, dma, performance.. providers
-    const SHAVECostModel& shave_service_provider; ///< service for shave providers
-    const HWPerformanceModel& performance;     ///< HW performance model
+    const VPUCostModel& all_service_provider;      ///< service as dpu, dma, performance.. providers
+    const SHAVECostModel& shave_service_provider;  ///< service for shave providers
+    const HWPerformanceModel& performance;         ///< HW performance model
 
     const VPUPowerFactorLUT
             power_factor_lut{};  /// < this is the lookup table for power factors. to be split on generations
@@ -43,10 +43,11 @@ public:
      *
      * @param performance_ is a reference to the performance model: Used to access the performance provider
      */
-    IEnergy(const VPUCostModel& all_service_provider_, const SHAVECostModel& shave_service_provider_, 
+    IEnergy(const VPUCostModel& all_service_provider_, const SHAVECostModel& shave_service_provider_,
             const HWPerformanceModel& performance_)
-            : all_service_provider(all_service_provider_), shave_service_provider(shave_service_provider_),
-            performance(performance_) {
+            : all_service_provider(all_service_provider_),
+              shave_service_provider(shave_service_provider_),
+              performance(performance_) {
     }
 
     /**

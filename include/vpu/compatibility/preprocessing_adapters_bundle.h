@@ -7,11 +7,12 @@
 // Please refer to the “third-party-programs.txt” or other similarly-named text file included with the
 // Software Package for additional details.
 
-#ifndef PREPROCESSING_ADAPTERS_H
-#define PREPROCESSING_ADAPTERS_H
+#ifndef VPUNN_PREPROCESSING_ADAPTERS_BUNDLE_H
+#define VPUNN_PREPROCESSING_ADAPTERS_BUNDLE_H
 
 #include <core/logger.h>
 #include <vpu/types.h>
+#include <vpu/utils.h>
 
 #include <sstream>  // for error formating
 #include <stdexcept>
@@ -21,13 +22,9 @@
 #include <vector>
 
 #include <unordered_set>
+#include "preprocessing_adapters_utils.h"
 
 namespace VPUNN {
-
-struct FilteredFields {
-    ISIStrategy isi{ISIStrategy::CLUSTERING};
-    unsigned int owt{1};
-};
 
 class PassThroughInputAdapter {
 public:
@@ -639,8 +636,25 @@ public:
         return operation;
     }
 
+    /// @brief Adjusts the output tensor channels for descriptor encoding.
+    /// The NN was trained only with output channels as multiples of 16.
+    /// Only the returned descriptor tensor is modified; the DPUWorkload is not touched.
+    static VPUTensor adjust_output_for_descriptor(const Operation operation, const DPUWorkload& workload) {
+        unsigned int oc = workload.outputs[0].channels();
+        if (workload.is_output_unaligned()) {
+            if (operation == Operation::CONVOLUTION) {
+                // CONVOLUTION: round up output channels to nearest multiple of 16 when OC > 16
+                oc = eltwise_channel_align(oc);
+            } else if (is_alignment_required_operation(operation)) {
+                // DWCONV/AVEPOOL/MAXPOOL: output channels must equal input channels
+                oc = workload.inputs[0].channels();
+            }
+        }
+        return VPUTensor({workload.outputs[0].width(), workload.outputs[0].height(), oc, workload.outputs[0].batches()},
+                         workload.outputs[0]);
+    }
+
     using NN5XInputAdapter::avoid_untrained_space;
 };
-
 }  // namespace VPUNN
-#endif
+#endif // VPUNN_PREPROCESSING_ADAPTERS_BUNDLE_H

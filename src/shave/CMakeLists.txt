@@ -377,8 +377,6 @@ function(GEN_HEADER_FILE_FOR_FACTORS_POPULATE CSV_FILE CLASS_NAME output_file)
     configure_file(ShaveFactorsPopulation.h.in ${output_file})
     message(STATUS " >> Generated Shave Factors Population Header File: ${output_file} for class PopulatedFactorsLUT${CLASS_NAME} \n  >> Generated code END")
 endfunction()
-
-# INTEL_EMBARGO_NPU5_Begin
 # --- This section should be changed in dependence of the files containing factors and the output format --- #
 
 GEN_HEADER_FILE_FOR_FACTORS_POPULATE(
@@ -386,8 +384,6 @@ GEN_HEADER_FILE_FOR_FACTORS_POPULATE(
     "_NPU5"         # the class name will be PopulatedFactorsLUT_NPU5
     "${COST_MODEL_BINARY_DIR}/include/vpu/shave/generated_shave_factors_population_npu5.h"
 )
-# INTEL_EMBARGO_NPU5_End
-
 # Generate header file for heuristic factors
 GEN_HEADER_FILE_FOR_FACTORS_POPULATE(
     "${CMAKE_CURRENT_SOURCE_DIR}/shave_heuristic_factors_npu5.csv"

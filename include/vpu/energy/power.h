@@ -20,13 +20,13 @@
 #include "vpu/performance.h"
 #include "vpu/types.h"
 #include "vpu/utils.h"
-// #include "vpunn.h"
 #include "vpu/vpu_performance_model.h"
 
 namespace VPUNN {
 
 namespace details {
-using pf_lut_t = std::vector<std::tuple<VPUNN::Operation, std::map<unsigned int, float>>>;
+using pf_lut_t =
+        std::vector<std::tuple<VPUNN::Operation, std::map<unsigned int, float>>>;  // key is  log2(input channels)
 
 /// @brief Compute type classification based on bit representation and computational convention
 enum class ComputePowerTypeClass {

@@ -1,0 +1,13 @@
+device,num_planes,length,src_width,dst_width,src_stride,dst_stride,src_plane_stride,dst_plane_stride,transfer_direction,loc_name,vpunn_cycles,info
+VPUDevice.VPU_2_7,0,153216,153216,153216,0,0,0,0,MemoryDirection.DDR2CMX,,6913,
+VPUDevice.VPU_2_7,0,154560,154560,154560,0,0,0,0,MemoryDirection.DDR2CMX,,6965,
+VPUDevice.VPU_2_7,0,1024,1024,1024,0,0,0,0,MemoryDirection.DDR2CMX,,843,
+VPUDevice.VPU_2_7,0,10240,10240,10240,0,0,0,0,MemoryDirection.DDR2CMX,,1250,
+VPUDevice.VPU_2_7,0,5120,5120,5120,0,0,0,0,MemoryDirection.DDR2CMX,,1123,
+VPUDevice.VPU_2_7,0,200704,200704,200704,0,0,0,0,MemoryDirection.CMX2DDR,,8661,
+VPUDevice.VPU_2_7,0,153216,153216,153216,0,0,0,0,MemoryDirection.DDR2CMX,,6913,
+VPUDevice.VPU_2_7,0,154560,154560,154560,0,0,0,0,MemoryDirection.DDR2CMX,,6965,
+VPUDevice.VPU_2_7,0,1024,1024,1024,0,0,0,0,MemoryDirection.DDR2CMX,,843,
+VPUDevice.VPU_2_7,0,10240,10240,10240,0,0,0,0,MemoryDirection.DDR2CMX,,1250,
+VPUDevice.VPU_2_7,0,5120,5120,5120,0,0,0,0,MemoryDirection.DDR2CMX,,1123,
+VPUDevice.VPU_2_7,0,200704,200704,200704,0,0,0,0,MemoryDirection.CMX2DDR,,8661,
