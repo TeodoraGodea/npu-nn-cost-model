@@ -1,0 +1,75 @@
+#ifndef GEN_SHAVE_PREFETCH_COST_POPULATION_H
+#define GEN_SHAVE_PREFETCH_COST_POPULATION_H
+
+@POPULATE_INFO@
+
+#include "vpu/shave/shave_prefetch_cost_strategy.h"
+
+namespace VPUNN {
+
+class PopulatedShavePrefetchCostLUT {
+private:
+    using OperationPrefetchLUT = VPUNN::OperationPrefetchLUT;
+
+    /// @brief Returns the lazily-initialized prefetch cost LUT for NPU 5.0.
+    static const OperationPrefetchLUT& get_lut_npu5() {
+        static const OperationPrefetchLUT lut_npu5 = []() {
+            OperationPrefetchLUT lut;
+@POPULATE_CONTENT_NPU5@
+            return lut;
+        }();
+        return lut_npu5;
+    }
+
+#ifdef INTEL_EMBARGO_NPU_RESERVED
+    /// @brief Returns the lazily-initialized prefetch cost LUT for NPU_RESERVED.0.
+    static const OperationPrefetchLUT& get_lut_NPU_RESERVED() {
+        static const OperationPrefetchLUT lut_NPU_RESERVED = []() {
+            OperationPrefetchLUT lut;
+@POPULATE_CONTENT_NPU_RESERVED@
+            return lut;
+        }();
+        return lut_NPU_RESERVED;
+    }
+#endif  // INTEL_EMBARGO_NPU_RESERVED
+#ifdef INTEL_EMBARGO_NPU_RESERVED_1
+    /// @brief Returns the lazily-initialized prefetch cost LUT for NPU_RESERVED_1.0.
+    static const OperationPrefetchLUT& get_lut_NPU_RESERVED_1() {
+        static const OperationPrefetchLUT lut_NPU_RESERVED_1 = []() {
+            OperationPrefetchLUT lut;
+@POPULATE_CONTENT_NPU_RESERVED_1@
+            return lut;
+        }();
+        return lut_NPU_RESERVED_1;
+    }
+#endif  // INTEL_EMBARGO_NPU_RESERVED_1
+
+public:
+    /// @brief Returns the per-device operation prefetch LUT for the given device.
+    ///
+    /// Adding a new device requires adding a new case here and a corresponding get_lut_npu*() function.
+    /// @return A reference to the operation prefetch LUT for the specified device,
+    /// or a reference to a shared empty LUT if the device is not supported.
+    static const OperationPrefetchLUT& get_lut_for_device(VPUDevice device) {
+        static const OperationPrefetchLUT empty_lut;
+
+        switch (device) {
+            case VPUDevice::NPU_5_0:
+                return get_lut_npu5();
+#ifdef INTEL_EMBARGO_NPU_RESERVED
+            case VPUDevice::NPU_RESERVED:
+                return get_lut_NPU_RESERVED();
+#endif  // INTEL_EMBARGO_NPU_RESERVED
+#ifdef INTEL_EMBARGO_NPU_RESERVED_1
+            case VPUDevice::NPU_RESERVED_1:
+                return get_lut_NPU_RESERVED_1();
+#endif  // INTEL_EMBARGO_NPU_RESERVED_1
+            default:
+                return empty_lut;
+        }
+    }
+};
+
+}  // namespace VPUNN
+
+#endif  // GEN_SHAVE_PREFETCH_COST_POPULATION_H
