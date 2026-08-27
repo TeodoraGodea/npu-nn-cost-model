@@ -20,30 +20,7 @@ private:
         }();
         return lut_npu5;
     }
-
-#ifdef INTEL_EMBARGO_NPU_RESERVED
-    /// @brief Returns the lazily-initialized prefetch cost LUT for NPU_RESERVED.0.
-    static const OperationPrefetchLUT& get_lut_NPU_RESERVED() {
-        static const OperationPrefetchLUT lut_NPU_RESERVED = []() {
-            OperationPrefetchLUT lut;
-@POPULATE_CONTENT_NPU_RESERVED@
-            return lut;
-        }();
-        return lut_NPU_RESERVED;
-    }
-#endif  // INTEL_EMBARGO_NPU_RESERVED
-#ifdef INTEL_EMBARGO_NPU_RESERVED_1
-    /// @brief Returns the lazily-initialized prefetch cost LUT for NPU_RESERVED_1.0.
-    static const OperationPrefetchLUT& get_lut_NPU_RESERVED_1() {
-        static const OperationPrefetchLUT lut_NPU_RESERVED_1 = []() {
-            OperationPrefetchLUT lut;
-@POPULATE_CONTENT_NPU_RESERVED_1@
-            return lut;
-        }();
-        return lut_NPU_RESERVED_1;
-    }
-#endif  // INTEL_EMBARGO_NPU_RESERVED_1
-
+    
 public:
     /// @brief Returns the per-device operation prefetch LUT for the given device.
     ///
@@ -56,14 +33,6 @@ public:
         switch (device) {
             case VPUDevice::NPU_5_0:
                 return get_lut_npu5();
-#ifdef INTEL_EMBARGO_NPU_RESERVED
-            case VPUDevice::NPU_RESERVED:
-                return get_lut_NPU_RESERVED();
-#endif  // INTEL_EMBARGO_NPU_RESERVED
-#ifdef INTEL_EMBARGO_NPU_RESERVED_1
-            case VPUDevice::NPU_RESERVED_1:
-                return get_lut_NPU_RESERVED_1();
-#endif  // INTEL_EMBARGO_NPU_RESERVED_1
             default:
                 return empty_lut;
         }
